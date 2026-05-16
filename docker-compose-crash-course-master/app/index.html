@@ -20,18 +20,34 @@
     }
 </style>
 <script>
-    (async function init() {
-        const cont = document.getElementById('container');
-        const response = await fetch('http://localhost:3000/fetch-data', {
-            method: "GET",
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
+    async function updateData() {
+        try {
+            const response = await fetch('/fetch-data');
+            const data = await response.json();
+            
+            if (data.value !== undefined) {
+                document.getElementById('dynamic').innerHTML = `
+                    <div style="margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        <p><strong>Value:</strong> ${data.value}</p>
+                        <p><strong>Status:</strong> <span style="color: ${data.status === 'Healthy' ? 'green' : 'orange'}">${data.status}</span></p>
+                        <p><strong>Last Worker Update:</strong> ${new Date(data.lastUpdated).toLocaleTimeString()}</p>
+                        <p><small style="color: gray">Refreshed at: ${new Date().toLocaleTimeString()}</small></p>
+                    </div>
+                `;
+            } else {
+                document.getElementById('dynamic').textContent = "Waiting for worker to ingest data...";
             }
-        });
-        const jsonResponse = await response.json();
-        document.getElementById('dynamic').textContent = jsonResponse.data;
-    })();
+        } catch (err) {
+            console.error('Fetch error:', err);
+            document.getElementById('dynamic').textContent = "Error connecting to server.";
+        }
+    }
+
+    // Update on load and then every 3 seconds
+    window.onload = () => {
+        updateData();
+        setInterval(updateData, 3000);
+    };
 </script>
 <body>
     <div class='container' id='container'>
