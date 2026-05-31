@@ -1,0 +1,13 @@
+{
+  "name": "worker-service",
+  "version": "1.0.0",
+  "description": "Background worker service",
+  "main": "worker.js",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "mongodb": "^4.16.0",
+    "redis": "^4.6.10"
+  }
+}

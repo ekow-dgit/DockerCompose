@@ -1,6 +1,6 @@
 services:
   my-app:
-    build: .
+    build: ./web-service
     ports:
       - "3000:3000"
     restart: always
@@ -53,15 +53,17 @@ services:
       - redisstorage:/data
 
   worker:
-    build: .
-    command: ["node", "worker.js"]
+    build: ./worker-service
     restart: always
     environment:
       - MONGO_DB_USERNAME=${MONGO_ADMIN_USER}
       - MONGO_DB_PASSWORD=${MONGO_ADMIN_PASS}
+      - REDIS_URL=redis://cache:6379
     depends_on:
       mongodb:
         condition: service_healthy
+      cache:
+        condition: service_started
 
 volumes:
   mongostorage:

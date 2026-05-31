@@ -37,35 +37,28 @@ let databaseName = "my-db";
 let collectionName = "my-collection";
 
 app.get('/fetch-data', async function (req, res) {
-  let response = {};
   const cacheKey = 'user-data';
 
   try {
-    // Try to get data from Redis cache
+    // 1. Always try Redis first
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
-      console.log('Serving from cache');
+      console.log('Serving from Redis (Fast Path)');
       return res.send(JSON.parse(cachedData));
     }
 
-    // If not in cache, get from MongoDB
+    // 2. Fallback to MongoDB only if Redis is empty
+    console.log('Cache miss, falling back to MongoDB');
     MongoClient.connect(mongoUrlDockerCompose, mongoClientOptions, function (err, client) {
       if (err) throw err;
 
       let db = client.db(databaseName);
       let myquery = { myid: 1 };
 
-      db.collection(collectionName).findOne(myquery, async function (err, result) {
+      db.collection(collectionName).findOne(myquery, function (err, result) {
         if (err) throw err;
-        response = result ? result : {};
-        
-        // Save to Redis cache for next time
-        await redisClient.set(cacheKey, JSON.stringify(response), {
-          EX: 5 // Cache expires in 5 seconds
-        });
-
+        let response = result ? result : {};
         client.close();
-        console.log('Serving from MongoDB');
         res.send(response);
       });
     });
@@ -78,4 +71,3 @@ app.get('/fetch-data', async function (req, res) {
 app.listen(3000, function () {
   console.log("app listening on port 3000!");
 });
-
