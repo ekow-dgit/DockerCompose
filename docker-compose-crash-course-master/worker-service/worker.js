@@ -4,7 +4,7 @@ const redis = require('redis');
 const DB_USER = process.env.MONGO_DB_USERNAME;
 const DB_PASS = process.env.MONGO_DB_PASSWORD;
 const REDIS_URL = process.env.REDIS_URL || 'redis://cache:6379';
-const mongoUrl = `mongodb://${DB_USER}:${DB_PASS}@mongodb`;
+const mongoUrl = `mongodb://${DB_USER}:${DB_PASS}@mongodb?authSource=admin`;
 
 const databaseName = "my-db";
 const collectionName = "my-collection";

@@ -9,12 +9,18 @@ services:
       - MONGO_DB_PASSWORD=${MONGO_ADMIN_PASS}
       - MONGO_URL=mongodb://${MONGO_ADMIN_USER}:${MONGO_ADMIN_PASS}@mongodb:27017/mydb?authSource=admin
       - REDIS_URL=redis://cache:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - OTEL_SERVICE_NAME=web-service
     depends_on:
       mongodb:
         condition: service_healthy
-
       cache:
+        condition: service_healthy
+      otel-collector:
         condition: service_started
+    networks:
+      - app-net
+      - observability-net
 
   mongodb:
     image: mongo:latest
@@ -27,10 +33,12 @@ services:
     volumes:
       - mongostorage:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--username", "${MONGO_ADMIN_USER}", "--password", "${MONGO_ADMIN_PASS}", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-net
 
   mongo-express:
     image: mongo-express:latest
@@ -43,6 +51,8 @@ services:
       - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_ADMIN_USER}:${MONGO_ADMIN_PASS}@mongodb:27017/?authSource=admin
     depends_on:
       - "mongodb"
+    networks:
+      - app-net
 
   cache:
     image: redis:latest
@@ -51,6 +61,13 @@ services:
       - "6379:6379"
     volumes:
       - redisstorage:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-net
 
   worker:
     build: ./worker-service
@@ -59,11 +76,35 @@ services:
       - MONGO_DB_USERNAME=${MONGO_ADMIN_USER}
       - MONGO_DB_PASSWORD=${MONGO_ADMIN_PASS}
       - REDIS_URL=redis://cache:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - OTEL_SERVICE_NAME=worker-service
     depends_on:
       mongodb:
         condition: service_healthy
       cache:
+        condition: service_healthy
+      otel-collector:
         condition: service_started
+    networks:
+      - app-net
+      - observability-net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-config.yaml"]
+    volumes:
+      - ./otel-config.yaml:/etc/otel-config.yaml
+    ports:
+      - "8889:8889" # Prometheus exporter metrics
+    networks:
+      - app-net
+      - observability-net
+
+networks:
+  app-net:
+  observability-net:
+    external: true
 
 volumes:
   mongostorage:

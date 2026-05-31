@@ -4,10 +4,20 @@
   "description": "Background worker service",
   "main": "worker.js",
   "scripts": {
-    "start": "node worker.js"
+    "start": "node --require ./instrumentation.js worker.js"
   },
   "dependencies": {
     "mongodb": "^4.16.0",
-    "redis": "^4.6.10"
+    "redis": "^4.6.10",
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/sdk-node": "^0.45.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.41.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.45.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.45.0",
+    "@opentelemetry/exporter-logs-otlp-grpc": "^0.45.0",
+    "@opentelemetry/sdk-metrics": "^1.19.0",
+    "@opentelemetry/sdk-logs": "^0.45.0",
+    "@opentelemetry/resources": "^1.19.0",
+    "@opentelemetry/semantic-conventions": "^1.19.0"
   }
 }

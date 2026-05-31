@@ -15,7 +15,26 @@ const redisClient = redis.createClient({
 });
 
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
-redisClient.connect();
+
+let db;
+let client;
+
+async function connectToDatabases() {
+  try {
+    await redisClient.connect();
+    console.log('Connected to Redis');
+
+    client = await MongoClient.connect(mongoUrlDockerCompose, mongoClientOptions);
+    db = client.db(databaseName);
+    console.log('Connected to MongoDB');
+  } catch (err) {
+    console.error('Initial connection error:', err);
+    // Optionally, you might want to retry or exit
+    // process.exit(1);
+  }
+}
+
+connectToDatabases();
 
 app.use(bodyParser.urlencoded({
   extended: true
@@ -27,7 +46,7 @@ app.get('/', function (req, res) {
   });
 
 // when starting app locally, use "mongodb://admin:password@localhost:27017" URL instead
-let mongoUrlDockerCompose = `mongodb://${DB_USER}:${DB_PASS}@mongodb`;
+let mongoUrlDockerCompose = `mongodb://${DB_USER}:${DB_PASS}@mongodb?authSource=admin`;
 
 // pass these options to mongo client connect request to avoid DeprecationWarning for current Server Discovery and Monitoring engine
 let mongoClientOptions = { useNewUrlParser: true, useUnifiedTopology: true };
@@ -49,19 +68,15 @@ app.get('/fetch-data', async function (req, res) {
 
     // 2. Fallback to MongoDB only if Redis is empty
     console.log('Cache miss, falling back to MongoDB');
-    MongoClient.connect(mongoUrlDockerCompose, mongoClientOptions, function (err, client) {
-      if (err) throw err;
+    
+    if (!db) {
+        return res.status(500).send('Database not connected');
+    }
 
-      let db = client.db(databaseName);
-      let myquery = { myid: 1 };
-
-      db.collection(collectionName).findOne(myquery, function (err, result) {
-        if (err) throw err;
-        let response = result ? result : {};
-        client.close();
-        res.send(response);
-      });
-    });
+    let myquery = { myid: 1 };
+    const result = await db.collection(collectionName).findOne(myquery);
+    let response = result ? result : {};
+    res.send(response);
   } catch (error) {
     console.error('Error fetching data:', error);
     res.status(500).send('Error fetching data');
